@@ -20,7 +20,7 @@ public class DownloadTask extends AsyncTask<String,Integer,Integer> {
     public static final int TYPE_CANCLED=3;
 
 
-    /*回调接口*/
+    /*CallBack để trả kết quả về cho DownloadService*/
     private DownloadListener listener;
     private boolean isCanceled=false;
     private boolean isPaused=false;
@@ -28,22 +28,30 @@ public class DownloadTask extends AsyncTask<String,Integer,Integer> {
     public DownloadTask(DownloadListener listener){
         this.listener=listener;
     }
-    /*自动开辟子线程处理事务*/
+    /*Xử lý việc download bằng AsynTask*/
     @Override
     protected Integer doInBackground(String... params) {
-        InputStream is = null;  //下载的文件
-        RandomAccessFile savedFile = null;//用来访问那些保存数据记录的文件
-        File file = null; //保存下载的文件
+        InputStream is = null;  //input stream để xử lý file download
+
+        File file = null; //File để xử lý việc download
+
+        //Tạo ra 1 file, mà file đó có thể đọc/ghi ở bất kỳ vị trí trên file đó. Giúp cho việc download xong pause giữa chừng rồi download tiếp.
+        //Lúc này file của chúng ta sẽ như 1 cái Array vậy, mình có thể truy xuất vào bất kỳ vị trí nào của file.
+        // Từ FILE ở trên, sẽ đưa vào file dạng này để xử lý việc download/pause
+        RandomAccessFile savedFile = null;
+
         try {
-            long downloadedLength = 0;
+            long downloadedLength = 0;  // chứa kích thước file đã download được.
             String downloadUrl = params[0];
             String fileName = downloadUrl.substring(downloadUrl.lastIndexOf("/"));
             String directory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getPath();//保存路径
             file = new File(directory + fileName);
             if (file.exists()) {
+                // Nếu file đã tồn tại, hoặc download dang dở, thì lấy ra được kích thước file đang có trên device.
                 downloadedLength = file.length();
             }
-        /*总文件字节*/
+        /*Total file byte*/
+        // Để lấy ra độ dài của file cần download
             long contentLength = getContentLehgth(downloadUrl);
             if (contentLength == 0) {
                 return TYPE_FAILED;
@@ -52,7 +60,9 @@ public class DownloadTask extends AsyncTask<String,Integer,Integer> {
             }
             OkHttpClient client = new OkHttpClient();
             Request request = new Request.Builder()
-                    //断点下载
+                    //header RANGE để báo hiệu đã download được tới đâu, sẽ tiếp tục download tiếp phần còn lại
+                    // nếu downloadedLength =0 => download lại từ đầu
+                    // nếu downloadedLenght = kích thước file cần downloaf => file đã download xong rồi => ko down nữa
                     .addHeader("RANGE","bytes="+downloadedLength+"-")
                     .url(downloadUrl).build();
             Response response=client.newCall(request).execute();
@@ -69,9 +79,11 @@ public class DownloadTask extends AsyncTask<String,Integer,Integer> {
                     }else  if(isPaused){
                         return TYPE_PAUSED;
                     }else {
+                        //total là tổng byte của file hiện tại đang download
                         total+=len;
                         savedFile.write(b,0,len);
                         int progress =(int) ((total+downloadedLength)*100/contentLength);
+                        // cập nhật % progress lên UI
                         publishProgress(progress);
                     }
                 }
@@ -134,11 +146,14 @@ public class DownloadTask extends AsyncTask<String,Integer,Integer> {
     public void cancleDownload(){
         isCanceled=true;
     }
+
+    // Để lấy được kích thước của file cần download (dựa vào link URL dùng OKHttp gửi lên server)
     private long getContentLehgth(String downloadUrl) throws IOException {
+
         OkHttpClient client=new OkHttpClient();
         Request request= new Request.Builder().url(downloadUrl).build();
 
-            Response response= client.newCall(request).execute();
+        Response response= client.newCall(request).execute();
         if(response!=null&&response.isSuccessful()){
             long contentLength = response.body().contentLength();
             response.body().close();
