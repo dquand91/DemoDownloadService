@@ -20,7 +20,7 @@ public class MainActivity extends AppCompatActivity {
 	private Button start;
 	private Button pause;
 	private Button cancel;
-	private DownloadService.DownloadBinder downloadBinder;
+	private DownloadService.DownloadBinder downloadBinder; // Custom download binder để giao tiếp với BindService.
 	private ServiceConnection connection=new ServiceConnection() {
 		@Override
 		public void onServiceConnected(ComponentName name, IBinder service) {
@@ -47,11 +47,11 @@ public class MainActivity extends AppCompatActivity {
 		pause.setOnClickListener(myOnClickListener);
 		cancel.setOnClickListener(myOnClickListener);
 
-		/*开启服务*/
+		/*Sử dụng Bound Service (trong bound service có chứa AsyncTask) để quản lý việc download*/
 		Intent intent = new Intent(MainActivity.this,DownloadService.class);
-//        startService(intent);//启动服务
-		bindService(intent,connection,BIND_AUTO_CREATE);//绑定服务
-		/*申请权限*/
+//        startService(intent);
+		bindService(intent,connection,BIND_AUTO_CREATE);// start Bind Service.
+		/*Kiểm tra quyền đọc ghi dữ liệu*/
 		if(ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE)!= PackageManager.PERMISSION_GRANTED){
 			ActivityCompat.requestPermissions(MainActivity.this,new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},1);
 		}
@@ -65,6 +65,7 @@ public class MainActivity extends AppCompatActivity {
 			}
 			switch (v.getId()){
 				case R.id.start_download:
+					// Truyền Link cần download vào đây.
 					String url="http://www.shadedrelief.com/world/Data/map1_type.jpg";
 					downloadBinder.startDownload(url);
 					break;
@@ -83,10 +84,11 @@ public class MainActivity extends AppCompatActivity {
 
 	@Override
 	public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+		// Callback trả về sau khi check permission do cái hàm ContextCompat.checkSelfPermission ở trên
 		switch (requestCode){
 			case 1:
 				if(grantResults.length>0&&grantResults[0]!=PackageManager.PERMISSION_GRANTED){
-					Toast.makeText(MainActivity.this,"拒绝权限无法使用程序",Toast.LENGTH_SHORT).show();
+					Toast.makeText(MainActivity.this,"Permission is denied!",Toast.LENGTH_SHORT).show();
 					finish();
 				}
 				break;

@@ -74,6 +74,10 @@ public class DownloadTask extends AsyncTask<String,Integer,Integer> {
                 int total =0;
                 int len;
                 while ((len=is.read(b))!=-1){
+                    // Cái biến isCanceled này trong vòng while và là biến toàn cục.
+                    // Nên nếu vòng while đang chạy, mà biến này có thay đổi từ bên ngoài => sẽ ảnh hưởng.
+                    // Ví dụ: isCanceled đang là FALSE và vòng while đang chạy, có 1 bên nào đó thay đổi thành TRUE
+                    // => điều kiện if này sẽ bị ảnh hưởng.
                     if(isCanceled) {
                         return TYPE_CANCLED;
                     }else  if(isPaused){
